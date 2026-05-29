@@ -5,6 +5,9 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.domain.ponto import Ponto
+from src.domain.demanda import Demanda
+from src.domain.parada import Parada
+from src.domain.linha_onibus import LinhaOnibus
 from src.util.excecoes import ExcecaoValidacaoSeguranca
 from src.application.processador_dados import ProcessadorDados
 from src.application.view_model import InputViewModel, ResultadoViewModel
@@ -13,55 +16,145 @@ from src.data.gerenciador_json_dados import GerenciadorJsonDados
 from src.data.gerenciador_autenticacao import GerenciadorAutenticacao
 
 
+
 class TestPonto(unittest.TestCase):
-    def test_criacao_ponto_valores_padrao(self):
+    def test_inicializacao_valores_padrao(self):
         p = Ponto()
         self.assertEqual(p.get_latitude(), 0.0)
         self.assertEqual(p.get_longitude(), 0.0)
-        self.assertEqual(p.get_demanda(), 0)
-        self.assertEqual(p.get_linhas_onibus(), [])
-        self.assertEqual(p.get_tipo_de_ponto(), "")
 
-    def test_getters_setters(self):
-        p = Ponto()
-        p.set_latitude(-19.917)
-        p.set_longitude(-43.934)
-        p.set_demanda(150)
-        p.set_linhas_onibus(["5102", "8103"])
-        p.set_tipo_de_ponto("TERMINAL")
-
+    def test_inicializacao_com_valores(self):
+        p = Ponto(latitude=-19.917, longitude=-43.934)
         self.assertEqual(p.get_latitude(), -19.917)
         self.assertEqual(p.get_longitude(), -43.934)
-        self.assertEqual(p.get_demanda(), 150)
-        self.assertEqual(p.get_linhas_onibus(), ["5102", "8103"])
-        self.assertEqual(p.get_tipo_de_ponto(), "TERMINAL")
+
+    def test_getters_e_setters(self):
+        p = Ponto()
+        p.set_latitude(-23.550)
+        p.set_longitude(-46.633)
+        self.assertEqual(p.get_latitude(), -23.550)
+        self.assertEqual(p.get_longitude(), -46.633)
 
     def test_to_dict(self):
-        p = Ponto(latitude=-19.917, longitude=-43.934, demanda=100,
-                  linhas_onibus=["5102"], tipo_de_ponto="PONTO DE ONIBUS")
+        p = Ponto(latitude=-19.917, longitude=-43.934)
         d = p.to_dict()
-        self.assertEqual(d["latitude"], -19.917)
-        self.assertEqual(d["longitude"], -43.934)
-        self.assertEqual(d["demanda"], 100)
-        self.assertEqual(d["linhas_onibus"], ["5102"])
-        self.assertEqual(d["tipo_de_ponto"], "PONTO DE ONIBUS")
+        self.assertEqual(d, {"latitude": -19.917, "longitude": -43.934})
 
     def test_from_dict(self):
-        d = {"latitude": -19.917, "longitude": -43.934, "demanda": 200,
-             "linhas_onibus": ["5102", "8103"], "tipo_de_ponto": "TERMINAL"}
+        d = {"latitude": -23.550, "longitude": -46.633}
         p = Ponto.from_dict(d)
-        self.assertEqual(p.get_latitude(), -19.917)
-        self.assertEqual(p.get_longitude(), -43.934)
-        self.assertEqual(p.get_demanda(), 200)
-        self.assertEqual(p.get_linhas_onibus(), ["5102", "8103"])
-        self.assertEqual(p.get_tipo_de_ponto(), "TERMINAL")
+        self.assertEqual(p.get_latitude(), -23.550)
+        self.assertEqual(p.get_longitude(), -46.633)
 
-    def test_igualdade(self):
-        p1 = Ponto(-19.917, -43.934, 100, ["5102"], "TERMINAL")
-        p2 = Ponto(-19.917, -43.934, 100, ["5102"], "TERMINAL")
-        p3 = Ponto(-19.918, -43.934, 100, ["5102"], "TERMINAL")
-        self.assertEqual(p1, p2)
-        self.assertNotEqual(p1, p3)
+
+class TestDemanda(unittest.TestCase):
+    def test_inicializacao_valores_padrao(self):
+        d = Demanda()
+        self.assertEqual(d.get_latitude(), 0.0)
+        self.assertEqual(d.get_longitude(), 0.0)
+        self.assertEqual(d.get_demanda(), 0)
+        self.assertEqual(d.get_nome(), "")
+
+    def test_inicializacao_com_valores(self):
+        d = Demanda(latitude=-19.917, longitude=-43.934, demanda=150, nome="Centro")
+        self.assertEqual(d.get_latitude(), -19.917)
+        self.assertEqual(d.get_longitude(), -43.934)
+        self.assertEqual(d.get_demanda(), 150)
+        self.assertEqual(d.get_nome(), "Centro")
+
+    def test_getters_e_setters(self):
+        d = Demanda()
+        d.set_demanda(300)
+        d.set_nome("Estação Norte")
+        self.assertEqual(d.get_demanda(), 300)
+        self.assertEqual(d.get_nome(), "Estação Norte")
+
+    def test_to_dict(self):
+        d = Demanda(latitude=-19.917, longitude=-43.934, demanda=150, nome="Centro")
+        dados = d.to_dict()
+        self.assertEqual(dados["latitude"], -19.917)
+        self.assertEqual(dados["longitude"], -43.934)
+        self.assertEqual(dados["demanda"], 150)
+        self.assertEqual(dados["nome"], "Centro")
+
+    def test_from_dict(self):
+        dados = {"latitude": -19.917, "longitude": -43.934, "demanda": 150, "nome": "Centro"}
+        d = Demanda.from_dict(dados)
+        self.assertEqual(d.get_latitude(), -19.917)
+        self.assertEqual(d.get_longitude(), -43.934)
+        self.assertEqual(d.get_demanda(), 150)
+        # Nota: Este assert vai falhar no seu código atual (ver Avisos abaixo)
+        self.assertEqual(d.get_nome(), "Centro")
+
+
+class TestLinhaOnibus(unittest.TestCase):
+    def test_inicializacao_valores_padrao(self):
+        l = LinhaOnibus()
+        self.assertEqual(l.get_nome(), "")
+        self.assertEqual(l.get_capacidade(), 0)
+        self.assertEqual(l.get_paradas_ids(), [])
+
+    def test_inicializacao_com_valores(self):
+        l = LinhaOnibus(nome="A10", capacidade=80, paradas_ids=[1, 2, 3])
+        self.assertEqual(l.get_nome(), "A10")
+        self.assertEqual(l.get_capacidade(), 80)
+        self.assertEqual(l.get_paradas_ids(), [1, 2, 3])
+
+    def test_getters_e_setters(self):
+        l = LinhaOnibus()
+        l.set_nome("B20")
+        l.set_capacidade(50)
+        l.set_paradas_ids([10, 20])
+        self.assertEqual(l.get_nome(), "B20")
+        self.assertEqual(l.get_capacidade(), 50)
+        self.assertEqual(l.get_paradas_ids(), [10, 20])
+
+    def test_to_dict(self):
+        l = LinhaOnibus(nome="A10", capacidade=80, paradas_ids=[1, 2, 3])
+        dados = l.to_dict()
+        self.assertEqual(dados, {"nome": "A10", "capacidade": 80, "paradas_ids": [1, 2, 3]})
+
+    def test_from_dict(self):
+        dados = {"nome": "A10", "capacidade": 80, "paradas_ids": [1, 2, 3]}
+        l = LinhaOnibus.from_dict(dados)
+        self.assertEqual(l.get_nome(), "A10")
+        self.assertEqual(l.get_paradas_ids(), [1, 2, 3])
+        # Nota: Este assert vai falhar no seu código atual (ver Avisos abaixo)
+        self.assertEqual(l.get_capacidade(), 80)
+
+
+class TestParada(unittest.TestCase):
+    def test_inicializacao_valores_padrao(self):
+        p = Parada()
+        self.assertEqual(p.get_id(), 0)
+        self.assertEqual(p.get_latitude(), 0.0)
+        self.assertEqual(p.get_longitude(), 0.0)
+        self.assertEqual(p.get_linhas_onibus(), [])
+        self.assertFalse(p.get_estado())
+
+    def test_inicializacao_com_valores(self):
+        p = Parada(id=5, latitude=-19.9, longitude=-43.9, linhas_onibus=["A10", "B20"], estado=True)
+        self.assertEqual(p.get_id(), 5)
+        self.assertEqual(p.get_latitude(), -19.9)
+        self.assertEqual(p.get_longitude(), -43.9)
+        self.assertEqual(p.get_linhas_onibus(), ["A10", "B20"])
+        self.assertTrue(p.get_estado())
+
+    def test_getters_e_setters(self):
+        p = Parada()
+        p.set_linhas_onibus(["C30"])
+        p.set_estado(True)
+        self.assertEqual(p.get_linhas_onibus(), ["C30"])
+        self.assertTrue(p.get_estado())
+
+    def test_to_dict(self):
+        p = Parada(id=5, latitude=-19.9, longitude=-43.9, linhas_onibus=["A10"], estado=True)
+        # Nota: Esta chamada vai falhar no seu código atual (ver Avisos abaixo)
+        dados = p.to_dict()
+        self.assertEqual(dados["id"], 5)
+        self.assertEqual(dados["latitude"], -19.9)
+        self.assertEqual(dados["linhas_onibus"], ["A10"])
+        self.assertTrue(dados["estado"])
 
 
 class TestExcecaoValidacaoSeguranca(unittest.TestCase):
