@@ -252,37 +252,80 @@ class TestProcessadorDados(unittest.TestCase):
     def setUp(self):
         self.processador = ProcessadorDados()
 
-    def test_processar_dados_validos(self):
+    def test_processar_demanda_valida(self):
+        """Testa o processamento específico de um dicionário de Demanda."""
         dados = {
-            "latitude": -19.917,
-            "longitude": -43.934,
+            "latitude": -19.9174567,
+            "longitude": -43.9341234,
             "demanda": 150,
-            "linhas_onibus": ["5102", "8103"],
-            "tipo_de_ponto": "Ponto de Ônibus",
+            "nome": "Estação Central",
         }
-        ponto = self.processador.processar(dados)
-        self.assertEqual(ponto.get_latitude(), -19.917)
-        self.assertEqual(ponto.get_longitude(), -43.934)
-        self.assertEqual(ponto.get_demanda(), 150)
-        self.assertEqual(ponto.get_tipo_de_ponto(), "PONTO DE ONIBUS")
+        demanda = self.processador.processar_demanda(dados)
+        
+        self.assertIsInstance(demanda, Demanda)
+        self.assertEqual(demanda.get_latitude(), -19.917456)  
+        self.assertEqual(demanda.get_longitude(), -43.934123)
+        self.assertEqual(demanda.get_demanda(), 150)
+        self.assertEqual(demanda.get_nome(), "ESTACAO CENTRAL")  
+
+    def test_processar_parada_valida(self):
+        """Testa o processamento específico de um dicionário de Parada."""
+        dados = {
+            "id": 42,
+            "latitude": -19.920,
+            "longitude": -43.940,
+            "linhas_onibus": "5102, 8103; 9104\n3054",
+            "estado": True,
+        }
+        parada = self.processador.processar_parada(dados)
+
+        self.assertIsInstance(parada, Parada)
+        self.assertEqual(parada.get_id(), 42)
+        self.assertEqual(parada.get_estado(), True)
+        self.assertEqual(parada.get_linhas_onibus(), ["5102", "8103", "9104", "3054"])
+
+    def test_processar_linha_onibus_valida(self):
+        """Testa o processamento específico de uma linha de ônibus (sem coordenadas)."""
+        dados = {
+            "nome": "Linha Trólebus 10",
+            "capacidade": 80,
+            "paradas_ids": [1, 2, 3]
+        }
+        linha = self.processador.processar_linha_onibus(dados)
+
+        self.assertIsInstance(linha, LinhaOnibus)
+        self.assertEqual(linha.get_nome(), "LINHA TROLEBUS 10")
+        self.assertEqual(linha.get_capacidade(), 80)
+        self.assertEqual(linha.get_paradas_ids(), [1, 2, 3])
+
+    def test_processar_linha_onibus_capacidade_negativa_lanca_excecao(self):
+        """Garante que capacidades inválidas para linhas disparem erro de segurança."""
+        dados = {"nome": "9106", "capacidade": -5, "paradas_ids": []}
+        with self.assertRaises(ExcecaoValidacaoSeguranca):
+            self.processador.processar_linha_onibus(dados)
+
+    def test_processar_dados_brutos_nao_dict_lanca_excecao(self):
+        """Garante que entradas malformadas sejam rejeitadas em todos os métodos."""
+        with self.assertRaises(ExcecaoValidacaoSeguranca):
+            self.processador.processar_demanda("não é um dict")
+        with self.assertRaises(ExcecaoValidacaoSeguranca):
+            self.processador.processar_parada([])
 
     def test_processar_demanda_negativa_lanca_excecao(self):
-        dados = {"latitude": -19.917, "longitude": -43.934, "demanda": -1,
-                 "linhas_onibus": "5102", "tipo_de_ponto": "TERMINAL"}
+        dados = {"latitude": -19.917, "longitude": -43.934, "demanda": -1, "nome": "Teste"}
         with self.assertRaises(ExcecaoValidacaoSeguranca):
-            self.processador.processar(dados)
+            self.processador.processar_demanda(dados)
 
     def test_processar_latitude_invalida(self):
-        dados = {"latitude": 100.0, "longitude": -43.934, "demanda": 10,
-                 "linhas_onibus": "5102", "tipo_de_ponto": "TERMINAL"}
+        dados = {"latitude": 100.0, "longitude": -43.934, "demanda": 10, "nome": "Teste"}
         with self.assertRaises(ExcecaoValidacaoSeguranca):
-            self.processador.processar(dados)
+            self.processador.processar_demanda(dados)
 
     def test_processar_longitude_invalida(self):
-        dados = {"latitude": -19.917, "longitude": -200.0, "demanda": 10,
-                 "linhas_onibus": "5102", "tipo_de_ponto": "TERMINAL"}
+        dados = {"latitude": -19.917, "longitude": -200.0, "demanda": 10, "nome": "Teste"}
         with self.assertRaises(ExcecaoValidacaoSeguranca):
-            self.processador.processar(dados)
+            self.processador.processar_demanda(dados)
+
 
     def test_remover_acentos_e_maiusculo(self):
         resultado = self.processador.remover_acentos_e_maiusculo("Ponto de Ônibus")
@@ -311,12 +354,8 @@ class TestProcessadorDados(unittest.TestCase):
         self.assertFalse(self.processador.detectar_flood_nonsense("PONTO DE ONIBUS"))
 
     def test_processar_linhas_onibus_por_string(self):
-        resultado = self.processador._processar_linhas_onibus("5102, 8103, 9104")
+        resultado = self.processador._processar_lista_linhas_onibus("5102, 8103, 9104")
         self.assertEqual(resultado, ["5102", "8103", "9104"])
-
-    def test_processar_dados_brutos_nao_dict(self):
-        with self.assertRaises(ExcecaoValidacaoSeguranca):
-            self.processador.processar("não é um dict")
 
 
 class TestGerenciadorAutenticacao(unittest.TestCase):
