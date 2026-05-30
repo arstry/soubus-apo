@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -14,7 +15,7 @@ from src.application.view_model import InputViewModel, ResultadoViewModel
 from src.application.main_integrador import MainIntegrador
 from src.data.gerenciador_json_dados import GerenciadorJsonDados
 from src.data.gerenciador_autenticacao import GerenciadorAutenticacao
-
+from src.application.estados import EstadosTelaEntrada, EstadosTelaResultado
 
 
 class TestPonto(unittest.TestCase):
@@ -406,13 +407,89 @@ class TestInputViewModel(unittest.TestCase):
         with self.assertRaises(ExcecaoValidacaoSeguranca):
             self.vm.submeter_dados(dados)
 
+class TestInputViewModel(unittest.TestCase):
+    def setUp(self):
+        self.arquivo_teste = "test_vm_dados.json"
+        self.repositorio = GerenciadorJsonDados(caminho_arquivo=self.arquivo_teste)
+        self.processador = ProcessadorDados()
+        self.vm = InputViewModel(
+            repositorio=self.repositorio, processador=self.processador
+        )
+
+    def tearDown(self):
+        if os.path.exists(self.arquivo_teste):
+            os.remove(self.arquivo_teste)
+
+    def test_submeter_demanda_valida(self):
+        """Testa o fluxo completo de sucesso ao submeter uma Demanda."""
+        dados = {
+            "latitude": -19.917,
+            "longitude": -43.934,
+            "demanda": 100,
+            "nome": "Terminal Central",
+        }
+        resultado = self.vm.submeter_demanda(dados)
+        self.assertTrue(resultado)
+        self.assertEqual(self.vm.uiState, EstadosTelaEntrada.SUCESSO)
+
+        # Garante que foi persistido corretamente no banco de dados
+        registros = self.repositorio.carregar_todos_os_pontos()
+        self.assertEqual(len(registros), 1)
+        self.assertIsInstance(registros[0], Demanda)
+
+    def test_submeter_parada_valida(self):
+        """Testa o fluxo completo de sucesso ao submeter uma Parada de ônibus."""
+        dados = {
+            "id": 10,
+            "latitude": -19.920,
+            "longitude": -43.940,
+            "linhas_onibus": "5102, 8103",
+            "estado": True,
+        }
+        resultado = self.vm.submeter_parada(dados)
+        self.assertTrue(resultado)
+        self.assertEqual(self.vm.uiState, EstadosTelaEntrada.SUCESSO)
+
+        registros = self.repositorio.carregar_todos_os_pontos()
+        self.assertEqual(len(registros), 1)
+        self.assertIsInstance(registros[0], Parada)
+
+    def test_submeter_linha_onibus_valida(self):
+        """Testa a submissão de uma linha operacional de ônibus (sem coordenadas)."""
+        dados = {
+            "nome": "Move 51",
+            "capacidade": 120,
+            "paradas_ids": [10, 11, 12]
+        }
+        resultado = self.vm.submeter_linha_onibus(dados)
+        self.assertTrue(resultado)
+        self.assertEqual(self.vm.uiState, EstadosTelaEntrada.SUCESSO)
+
+        # Verifica se foi armazenado na gaveta isolada de linhas de ônibus
+        linhas = self.repositorio.carregar_registros_linha_onibus()
+        self.assertEqual(len(linhas), 1)
+        self.assertEqual(linhas[0].get_nome(), "MOVE 51")
+
+    def test_submeter_demanda_invalidas_altera_estado_para_erro(self):
+        """Garante que falhas de validação alterem o uiState para ERRO e relancem a exceção."""
+        dados = {
+            "latitude": -19.917,
+            "longitude": -43.934,
+            "demanda": -50,  # Demanda inválida
+            "nome": "Erro",
+        }
+        with self.assertRaises(ExcecaoValidacaoSeguranca):
+            self.vm.submeter_demanda(dados)
+        self.assertEqual(self.vm.uiState, EstadosTelaEntrada.ERRO)
 
 class TestResultadoViewModel(unittest.TestCase):
     def setUp(self):
         self.arquivo_dados = "test_vm2_dados.json"
         self.arquivo_config = "test_vm2_config.json"
         self.repositorio = GerenciadorJsonDados(caminho_arquivo=self.arquivo_dados)
-        self.autenticador = GerenciadorAutenticacao(caminho_arquivo_config=self.arquivo_config)
+        self.autenticador = GerenciadorAutenticacao(
+            caminho_arquivo_config=self.arquivo_config
+        )
         self.vm = ResultadoViewModel(
             repositorio=self.repositorio, autenticador=self.autenticador
         )
@@ -428,27 +505,110 @@ class TestResultadoViewModel(unittest.TestCase):
     def test_realizar_login_credenciais_invalidas(self):
         resultado = self.vm.realizar_login("admin", "senha_errada")
         self.assertFalse(resultado)
+        self.assertEqual(self.vm.uiState, EstadosTelaResultado.ERRO)
 
     def test_obter_dados_tabela_vazia(self):
         registros = self.vm.obter_dados_tabela()
         self.assertEqual(registros, [])
+        self.assertEqual(self.vm.uiState, EstadosTelaResultado.AUTENTICADO)
 
-    def test_processar_exportacao_csv(self):
-        ponto = Ponto(-19.917, -43.934, 100, ["5102"], "TERMINAL")
-        self.repositorio.salvar_registro(ponto)
+    def test_obter_linhas_onibus_cadastradas(self):
+        """Garante que a ViewModel busca corretamente as linhas operacionais armazenadas."""
+        linha = LinhaOnibus(nome="8103", capacidade=70)
+        self.repositorio.salvar_registro_linha_onibus(linha)
+
+        linhas_recuperadas = self.vm.obter_linhas_onibus()
+        self.assertEqual(len(linhas_recuperadas), 1)
+        self.assertEqual(linhas_recuperadas[0].get_nome(), "8103")
+
+    def test_processar_exportacao_csv_polimorfico(self):
+        """Valida se a exportação em CSV processa com segurança objetos mistos (Demanda e Parada)."""
+        demanda = Demanda(
+            latitude=-19.917, longitude=-43.934, demanda=100, nome="Centro"
+        )
+        parada = Parada(
+            id=1, latitude=-19.920, longitude=-43.940, linhas_onibus=["5102"]
+        )
+
+        self.repositorio.salvar_registro_demanda(demanda)
+        self.repositorio.salvar_registro_parada(parada)
+
         caminho = self.vm.processar_exportacao("csv")
         self.assertTrue(os.path.exists(caminho))
+        self.assertEqual(self.vm.uiState, EstadosTelaResultado.AUTENTICADO)
 
-    def test_processar_exportacao_json(self):
-        ponto = Ponto(-19.917, -43.934, 100, ["5102"], "TERMINAL")
-        self.repositorio.salvar_registro(ponto)
-        caminho = self.vm.processar_exportacao("json")
+    def test_processar_exportacao_json_com_filtros(self):
+        """Testa o isolamento de filtros textuais ao gerar uma exportação parcial em JSON."""
+        parada_com_linha = Parada(
+            id=1, latitude=-19.920, longitude=-43.940, linhas_onibus=["5102"]
+        )
+        parada_sem_linha = Parada(
+            id=2, latitude=-19.930, longitude=-43.950, linhas_onibus=["9106"]
+        )
+
+        self.repositorio.salvar_registro_parada(parada_com_linha)
+        self.repositorio.salvar_registro_parada(parada_sem_linha)
+
+        # Filtra a exportação exigindo a correspondência com a linha "5102"
+        caminho = self.vm.processar_exportacao("json", filtros_linhas=["5102"])
         self.assertTrue(os.path.exists(caminho))
 
+        with open(caminho, "r", encoding="utf-8") as f:
+            dados_exportados = json.load(f)
+            # A parada que atende à linha procurada deve persistir
+            self.assertTrue(
+                any(d.get("id") == 1 for d in dados_exportados if "id" in d)
+            )
+            # A parada sem vinculação à linha deve ser removida pelo filtro
+            self.assertFalse(
+                any(d.get("id") == 2 for d in dados_exportados if "id" in d)
+            )
+
     def test_processar_exportacao_formato_invalido(self):
+        """Garante que formatos não mapeados lancem erro e alterem o estado visual."""
         with self.assertRaises(ValueError):
             self.vm.processar_exportacao("xml")
+        self.assertEqual(self.vm.uiState, EstadosTelaResultado.ERRO)
 
+
+    def test_processar_exportacao_preserva_demandas_sob_filtros_de_linha(self):
+        """Garante que instâncias de Demanda não sejam expurgadas por filtros direcionados a Paradas."""
+        demanda = Demanda(
+            latitude=-19.915, longitude=-43.930, demanda=80, nome="Hospital"
+        )
+        parada = Parada(
+            id=3, latitude=-19.922, longitude=-43.944, linhas_onibus=["8103"]
+        )
+
+        self.repositorio.salvar_registro_demanda(demanda)
+        self.repositorio.salvar_registro_parada(parada)
+
+        # Aplica filtro para uma linha que a parada não possui
+        caminho = self.vm.processar_exportacao("json", filtros_linhas=["5102"])
+
+        with open(caminho, "r", encoding="utf-8") as f:
+            dados_exportados = json.load(f)
+            # A parada id=3 deve sumir pois não atende à linha "5102"
+            self.assertFalse(
+                any(d.get("id") == 3 for d in dados_exportados if "id" in d)
+            )
+            # A Demanda geral deve continuar no relatório consolidado
+            self.assertTrue(
+                any(d.get("nome").upper() == "HOSPITAL" for d in dados_exportados if "nome" in d)
+            )
+
+    def test_falha_no_repositorio_atualiza_estado_para_erro(self):
+        """Força uma quebra de persistência para validar a resiliência do uiState."""
+        # CORREÇÃO: Uma função que realmente LANÇA a exceção com raise
+        def simular_falha():
+            raise RuntimeError("Simulação de Falha Crítica")
+            
+        self.repositorio.carregar_todos_os_pontos = simular_falha
+
+        with self.assertRaises(Exception):
+            self.vm.obter_dados_tabela()
+
+        self.assertEqual(self.vm.uiState, EstadosTelaResultado.ERRO)
 
 class TestMainIntegrador(unittest.TestCase):
     def test_iniciar_aplicacao(self):
