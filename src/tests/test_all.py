@@ -156,6 +156,86 @@ class TestParada(unittest.TestCase):
         self.assertEqual(dados["linhas_onibus"], ["A10"])
         self.assertTrue(dados["estado"])
 
+class TestGerenciadorJsonDados(unittest.TestCase):
+    def setUp(self):
+        # Usamos um arquivo temporário exclusivo para os testes
+        self.arquivo_teste = "test_dados_sistema.json"
+        self.gerenciador = GerenciadorJsonDados(caminho_arquivo=self.arquivo_teste)
+
+    def tearDown(self):
+        # Limpa o ambiente removendo o arquivo criado após cada teste
+        if os.path.exists(self.arquivo_teste):
+            os.remove(self.arquivo_teste)
+
+    def test_inicializacao_cria_esquema_padrao_correto(self):
+        """Testa se o arquivo é criado com a nova estrutura de três listas."""
+        self.assertTrue(os.path.exists(self.arquivo_teste))
+        
+        # Carrega o arquivo puro para validar as chaves estruturais
+        dados = self.gerenciador._carregar_arquivo()
+        self.assertIn("demandas", dados)
+        self.assertIn("paradas", dados)
+        self.assertIn("linhas_onibus", dados)
+        self.assertEqual(dados["demandas"], [])
+
+    def test_salvar_e_carregar_todos_os_pontos_misturados(self):
+        """Testa o comportamento polimórfico: salva entidades em caixas separadas
+
+        e recupera tudo junto como instâncias corretas na ordem especificada.
+        """
+        demanda = Demanda(latitude=-19.917, longitude=-43.934, demanda=150, nome="Centro")
+        parada = Parada(id=1, latitude=-19.920, longitude=-43.940, linhas_onibus=["5102", "3054"])
+
+        # Salva utilizando os métodos específicos correspondentes
+        self.gerenciador.salvar_registro_demanda(demanda)
+        self.gerenciador.salvar_registro_parada(parada)
+
+        # Carrega a lista unificada de pontos geográficos
+        pontos = self.gerenciador.carregar_todos_os_pontos()
+
+        self.assertEqual(len(pontos), 2)
+        
+        # Garante que os objetos retornados mantiveram seus tipos e dados originais
+        self.assertIsInstance(pontos[0], Demanda)
+        self.assertEqual(pontos[0].get_demanda(), 150)
+        self.assertEqual(pontos[0].get_nome(), "Centro")
+
+        self.assertIsInstance(pontos[1], Parada)
+        self.assertEqual(pontos[1].get_id(), 1)
+        self.assertIn("5102", pontos[1].get_linhas_onibus())
+
+    def test_salvar_e_carregar_linhas_onibus_isoladas(self):
+        """Testa se as linhas de ônibus estão sendo isoladas corretamente das coordenadas de pontos."""
+        linha = LinhaOnibus(nome="8103", capacidade=80, paradas_ids=[1, 2, 3])
+        
+        self.gerenciador.salvar_registro_linha_onibus(linha)
+        
+        # Verifica se as linhas de ônibus não vazam para a lista de pontos geográficos
+        pontos = self.gerenciador.carregar_todos_os_pontos()
+        self.assertEqual(len(pontos), 0)
+
+        # Verifica se conseguimos carregar a linha de ônibus isoladamente
+        linhas = self.gerenciador.carregar_registros_linha_onibus()
+        self.assertEqual(len(linhas), 1)
+        self.assertEqual(linhas[0].get_nome(), "8103")
+        self.assertEqual(linhas[0].get_capacidade(), 80)
+
+    def test_garantir_integridade_corrige_estrutura_antiga_ou_invalida(self):
+        """Testa se o validador limpa e regenera o arquivo caso encontre um JSON corrompido
+
+        ou no formato do sistema antigo (com a chave 'registros').
+        """
+        # Força a escrita de um layout inválido/antigo no arquivo
+        dados_corrompidos = {"registros": [{"latitude": 0.0, "longitude": 0.0}]}
+        self.gerenciador._salvar_arquivo(dados_corrompidos)
+
+        # Dispara manualmente o validador (que também roda no __init__)
+        self.gerenciador._garantir_integridade_esquema()
+
+        # O arquivo deve ter sido resetado para o esquema padrão seguro
+        dados_corrigidos = self.gerenciador._carregar_arquivo()
+        self.assertNotIn("registros", dados_corrigidos)
+        self.assertIn("demandas", dados_corrigidos)
 
 class TestExcecaoValidacaoSeguranca(unittest.TestCase):
     def test_mensagem_simples(self):
@@ -237,44 +317,6 @@ class TestProcessadorDados(unittest.TestCase):
     def test_processar_dados_brutos_nao_dict(self):
         with self.assertRaises(ExcecaoValidacaoSeguranca):
             self.processador.processar("não é um dict")
-
-
-class TestGerenciadorJsonDados(unittest.TestCase):
-    def setUp(self):
-        self.arquivo_teste = "test_dados_pontos.json"
-        self.gerenciador = GerenciadorJsonDados(caminho_arquivo=self.arquivo_teste)
-
-    def tearDown(self):
-        if os.path.exists(self.arquivo_teste):
-            os.remove(self.arquivo_teste)
-
-    def test_inicializacao_cria_arquivo(self):
-        self.assertTrue(os.path.exists(self.arquivo_teste))
-
-    def test_salvar_e_carregar_registros(self):
-        ponto = Ponto(-19.917, -43.934, 100, ["5102"], "TERMINAL")
-        self.gerenciador.salvar_registro(ponto)
-
-        registros = self.gerenciador.carregar_registros()
-        self.assertEqual(len(registros), 1)
-        self.assertEqual(registros[0], ponto)
-
-    def test_carregar_arquivo_vazio_retorna_lista_vazia(self):
-        registros = self.gerenciador.carregar_registros()
-        self.assertEqual(registros, [])
-
-    def test_multiplos_registros(self):
-        pontos = [
-            Ponto(-19.917, -43.934, 100, ["5102"], "TERMINAL"),
-            Ponto(-19.920, -43.940, 50, ["8103"], "PONTO DE ONIBUS"),
-        ]
-        for p in pontos:
-            self.gerenciador.salvar_registro(p)
-
-        registros = self.gerenciador.carregar_registros()
-        self.assertEqual(len(registros), 2)
-        self.assertEqual(registros[0], pontos[0])
-        self.assertEqual(registros[1], pontos[1])
 
 
 class TestGerenciadorAutenticacao(unittest.TestCase):
