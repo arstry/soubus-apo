@@ -19,7 +19,7 @@ a Public Transport System. It is divided into two main areas:
 🛠️ Technologies & Architecture
 
   - Language: Python
-  - GUI Framework: Tkinter
+  - GUI Framework: Custontkinter
   - Data Storage: Local JSON and CSV files
   - Architecture Pattern: MVVM (Model-View-ViewModel)
   - Design Patterns: Dependency Injection
@@ -28,6 +28,7 @@ a Public Transport System. It is divided into two main areas:
 
 The project's architecture is organized into logical layers, strictly following
 the Single Responsibility Principle (SRP) and Don't Repeat Yourself (DRY).
+
 
 1. Classes & Layers
 
@@ -77,3 +78,36 @@ implementations:
 | **Gabriel Rodrigues Coutinho Mendonça** | `GerenciadorJsonDados`, Database Management (CSV/JSON)                   |
 
 Belo Horizonte, 2026
+
+## Dependencies
+
+The SouBus project primarily uses Python's standard library. The following external libraries are required for graph visualization and the graphical interface:
+
+```bash
+pip install customtkinter matplotlib networkx
+```
+
+### Required Packages
+
+- `customtkinter` — Modern graphical user interface.
+- `matplotlib` — Graph plotting and visualization.
+- `networkx` — Graph creation and manipulation.
+
+### Using a Virtual Environment
+
+It is recommended to create a virtual environment before installing dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Installing Dependencies Manually
+
+If you are not using `requirements.txt`:
+
+```bash
+pip install customtkinter matplotlib networkx
+sudo apt install python3-tk
+```
