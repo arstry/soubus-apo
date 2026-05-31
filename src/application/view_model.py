@@ -8,8 +8,11 @@ from src.application.estados import EstadosTelaEntrada, EstadosTelaResultado
 from src.application.processador_dados import ProcessadorDados
 from src.data.gerenciador_autenticacao import GerenciadorAutenticacao
 from src.data.gerenciador_json_dados import GerenciadorJsonDados
-from src.domain import Ponto, PontoTransporte
 from src.util.excecoes import ExcecaoValidacaoSeguranca
+from src.domain.ponto import Ponto
+from src.domain.demanda import Demanda
+from src.domain.linha_onibus import LinhaOnibus
+from src.domain.parada import Parada
 
 
 class ViewModel(ABC):
@@ -27,12 +30,45 @@ class InputViewModel(ViewModel):
         self._processador = processador
         self.uiState = EstadosTelaEntrada.OCIOSO
 
-    def submeter_dados(self, dados_brutos: dict) -> bool:
+    def submeter_demanda(self, dados_brutos: dict) -> bool:
+        """Processa e salva um novo registro de Demanda."""
         self.uiState = EstadosTelaEntrada.VALIDANDO
         try:
-            ponto = self._processador.processar(dados_brutos)
+            demanda = self._processador.processar_demanda(dados_brutos)
             self.uiState = EstadosTelaEntrada.ENVIANDO
-            self._repositorio.salvar_registro(ponto)
+            self._repositorio.salvar_registro_demanda(demanda)
+            self.uiState = EstadosTelaEntrada.SUCESSO
+            return True
+        except ExcecaoValidacaoSeguranca:
+            self.uiState = EstadosTelaEntrada.ERRO
+            raise
+        except Exception:
+            self.uiState = EstadosTelaEntrada.ERRO
+            raise
+
+    def submeter_parada(self, dados_brutos: dict) -> bool:
+        """Processa e salva um novo registro de Parada de ônibus."""
+        self.uiState = EstadosTelaEntrada.VALIDANDO
+        try:
+            parada = self._processador.processar_parada(dados_brutos)
+            self.uiState = EstadosTelaEntrada.ENVIANDO
+            self._repositorio.salvar_registro_parada(parada)
+            self.uiState = EstadosTelaEntrada.SUCESSO
+            return True
+        except ExcecaoValidacaoSeguranca:
+            self.uiState = EstadosTelaEntrada.ERRO
+            raise
+        except Exception:
+            self.uiState = EstadosTelaEntrada.ERRO
+            raise
+
+    def submeter_linha_onibus(self, dados_brutos: dict) -> bool:
+        """Processa e salva um novo registro de Linha de Ônibus."""
+        self.uiState = EstadosTelaEntrada.VALIDANDO
+        try:
+            linha = self._processador.processar_linha_onibus(dados_brutos)
+            self.uiState = EstadosTelaEntrada.ENVIANDO
+            self._repositorio.salvar_registro_linha_onibus(linha)
             self.uiState = EstadosTelaEntrada.SUCESSO
             return True
         except ExcecaoValidacaoSeguranca:
@@ -66,33 +102,54 @@ class ResultadoViewModel(ViewModel):
             self.uiState = EstadosTelaResultado.ERRO
             raise
 
-    def obter_dados_tabela(self) -> List[PontoTransporte]:
+    def obter_dados_tabela(self) -> List[Ponto]:
+        """Retorna a lista polimórfica combinada de Demandas e Paradas para o mapa/tabela."""
         self.uiState = EstadosTelaResultado.CARREGANDO
         try:
-            registros = self._repositorio.carregar_registros()
+            registros = self._repositorio.carregar_todos_os_pontos()
             self.uiState = EstadosTelaResultado.AUTENTICADO
             return registros
         except Exception:
             self.uiState = EstadosTelaResultado.ERRO
             raise
-
+    
+    def obter_linhas_onibus(self) -> List[LinhaOnibus]:
+        """Retorna todas as linhas de ônibus cadastradas no sistema.
+        
+        Útil para preencher componentes visuais como Combobox, listas de filtros, etc.
+        """
+        self.uiState = EstadosTelaResultado.CARREGANDO
+        try:
+            linhas = self._repositorio.carregar_registros_linha_onibus()
+            self.uiState = EstadosTelaResultado.AUTENTICADO
+            return linhas
+        except Exception:
+            self.uiState = EstadosTelaResultado.ERRO
+            raise
+        
     def processar_exportacao(
         self, formato: str, filtros_linhas: List[str] | None = None
     ) -> str:
         self.uiState = EstadosTelaResultado.EXPORTANDO
         try:
-            registros = self._repositorio.carregar_registros()
+            # Carrega a lista polimórfica contendo tanto Demandas quanto Paradas
+            registros = self._repositorio.carregar_todos_os_pontos()
 
+            # Aplica o filtro de linhas de ônibus apenas em objetos do tipo Parada
             if filtros_linhas:
                 filtros_normalizados = [f.upper().strip() for f in filtros_linhas]
-                registros = [
-                    r
-                    for r in registros
-                    if any(
-                        filtro in " ".join(r.get_linhas_onibus()).upper()
-                        for filtro in filtros_normalizados
-                    )
-                ]
+                registros_filtrados = []
+                for r in registros:
+                    if isinstance(r, Parada):
+                        # Se for Parada, verifica se ela atende a alguma das linhas do filtro
+                        linhas_da_parada = [l.upper().strip() for l in r.get_linhas_onibus()]
+                        if any(f in linhas_da_parada for f in filtros_normalizados):
+                            registros_filtrados.append(r)
+                    elif isinstance(r, Demanda):
+                        # Dependendo da regra de negócio: mantemos demandas no arquivo filtrado 
+                        # ou ignoramos. Aqui vamos mantê-las para não sumirem do relatório geral.
+                        registros_filtrados.append(r)
+                registros = registros_filtrados
 
             formato = formato.lower().strip()
             if formato == "csv":
@@ -108,26 +165,43 @@ class ResultadoViewModel(ViewModel):
             self.uiState = EstadosTelaResultado.ERRO
             raise
 
-    def _exportar_csv(self, registros: List[PontoTransporte]) -> str:
+    def _exportar_csv(self, registros: List[Ponto]) -> str:
         caminho = "exportacao_pontos.csv"
         with open(caminho, "w", encoding="utf-8", newline="") as arquivo:
             escritor = csv.writer(arquivo)
             escritor.writerow(
-                ["latitude", "longitude", "demanda", "linhas_onibus", "tipo_de_ponto"]
+                ["latitude", "longitude", "demanda", "linhas_onibus", "nome_demanda", "tipo_de_ponto"]
             )
             for ponto in registros:
+                if isinstance(ponto, Demanda):
+                    demanda_valor = ponto.get_demanda()
+                    linhas_formatadas = ""
+                    nome_demanda = ponto.get_nome()
+                    tipo_texto = "DEMANDA"
+                elif isinstance(ponto, Parada):
+                    demanda_valor = 0
+                    linhas_formatadas = ";".join(ponto.get_linhas_onibus())
+                    nome_demanda = ""
+                    tipo_texto = f"PARADA (ID: {ponto.get_id()})"
+                else:
+                    demanda_valor = 0
+                    linhas_formatadas = ""
+                    nome_demanda = ""
+                    tipo_texto = "PONTO_GENERICO"
+
                 escritor.writerow(
                     [
                         ponto.get_latitude(),
                         ponto.get_longitude(),
-                        ponto.get_demanda(),
-                        ";".join(ponto.get_linhas_onibus()),
-                        ponto.get_tipo_de_ponto(),
+                        demanda_valor,
+                        linhas_formatadas,
+                        nome_demanda,
+                        tipo_texto,
                     ]
                 )
         return os.path.abspath(caminho)
 
-    def _exportar_json(self, registros: List[PontoTransporte]) -> str:
+    def _exportar_json(self, registros: List[Ponto]) -> str:
         caminho = "exportacao_pontos.json"
         with open(caminho, "w", encoding="utf-8") as arquivo:
             json.dump(
