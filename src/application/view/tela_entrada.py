@@ -146,7 +146,7 @@ class TelaEntrada(ctk.CTk):
         self._tipo_selecionado = "demanda"
 
         container = ctk.CTkScrollableFrame(self.area_formulario, corner_radius=0, fg_color="transparent")
-        container.pack(fill="both", expand=True, padx=10, pady=10)
+        container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         self._widgets_formulario.append(container)
 
         ctk.CTkLabel(
@@ -177,7 +177,7 @@ class TelaEntrada(ctk.CTk):
         self._tipo_selecionado = "parada"
 
         container = ctk.CTkScrollableFrame(self.area_formulario, corner_radius=0, fg_color="transparent")
-        container.pack(fill="both", expand=True, padx=10, pady=10)
+        container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         self._widgets_formulario.append(container)
 
         ctk.CTkLabel(
@@ -211,7 +211,7 @@ class TelaEntrada(ctk.CTk):
         self._tipo_selecionado = "linha_onibus"
 
         container = ctk.CTkScrollableFrame(self.area_formulario, corner_radius=0, fg_color="transparent")
-        container.pack(fill="both", expand=True, padx=10, pady=10)
+        container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         self._widgets_formulario.append(container)
 
         ctk.CTkLabel(
