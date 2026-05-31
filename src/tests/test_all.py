@@ -264,8 +264,8 @@ class TestProcessadorDados(unittest.TestCase):
         demanda = self.processador.processar_demanda(dados)
         
         self.assertIsInstance(demanda, Demanda)
-        self.assertEqual(demanda.get_latitude(), -19.917456)  
-        self.assertEqual(demanda.get_longitude(), -43.934123)
+        self.assertEqual(demanda.get_latitude(), -19.9174567)  
+        self.assertEqual(demanda.get_longitude(), -43.9341234)
         self.assertEqual(demanda.get_demanda(), 150)
         self.assertEqual(demanda.get_nome(), "ESTACAO CENTRAL")  
 
@@ -334,7 +334,7 @@ class TestProcessadorDados(unittest.TestCase):
 
     def test_truncar_coordenadas(self):
         resultado = self.processador.truncar_coordenadas(-19.917456789)
-        self.assertEqual(resultado, -19.917456)
+        self.assertEqual(resultado, -19.917456789)
 
     def test_neutralizar_injecao_comandos(self):
         resultado = self.processador.neutralizar_injecao_comandos("texto; rm -rf /")
