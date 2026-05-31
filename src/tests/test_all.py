@@ -393,33 +393,6 @@ class TestInputViewModel(unittest.TestCase):
         if os.path.exists(self.arquivo_teste):
             os.remove(self.arquivo_teste)
 
-    def test_submeter_dados_validos(self):
-        dados = {"latitude": -19.917, "longitude": -43.934, "demanda": 100,
-                 "linhas_onibus": "5102", "tipo_de_ponto": "TERMINAL"}
-        resultado = self.vm.submeter_dados(dados)
-        self.assertTrue(resultado)
-        from src.application.estados import EstadosTelaEntrada
-        self.assertEqual(self.vm.uiState, EstadosTelaEntrada.SUCESSO)
-
-    def test_submeter_dados_invalidos_lanca_excecao(self):
-        dados = {"latitude": -19.917, "longitude": -43.934, "demanda": -1,
-                 "linhas_onibus": "5102", "tipo_de_ponto": "TERMINAL"}
-        with self.assertRaises(ExcecaoValidacaoSeguranca):
-            self.vm.submeter_dados(dados)
-
-class TestInputViewModel(unittest.TestCase):
-    def setUp(self):
-        self.arquivo_teste = "test_vm_dados.json"
-        self.repositorio = GerenciadorJsonDados(caminho_arquivo=self.arquivo_teste)
-        self.processador = ProcessadorDados()
-        self.vm = InputViewModel(
-            repositorio=self.repositorio, processador=self.processador
-        )
-
-    def tearDown(self):
-        if os.path.exists(self.arquivo_teste):
-            os.remove(self.arquivo_teste)
-
     def test_submeter_demanda_valida(self):
         """Testa o fluxo completo de sucesso ao submeter uma Demanda."""
         dados = {
