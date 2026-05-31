@@ -2,6 +2,7 @@ import customtkinter as ctk
 import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from src.application.view.components.janela_selecao_formato import JanelaSelecaoFormato
 from src.application.view_model import ResultadoViewModel
 from src.application.view.components.modal import exibir_modal
 
@@ -16,7 +17,7 @@ class TelaResultados(ctk.CTk):
         
         self._view_model = view_model
 
-        self.title("SouBus-APO - Painel de Controle e Resultados")
+        self.title("SouBus - Painel de Controle e Resultados")
         self.geometry("1200x750")
         self.minsize(900, 600)
 
@@ -38,7 +39,7 @@ class TelaResultados(ctk.CTk):
 
         self.lbl_titulo = ctk.CTkLabel(
             self.menu_lateral, 
-            text="SouBus-APO", 
+            text="SouBus", 
             font=ctk.CTkFont(size=22, weight="bold")
         )
         self.lbl_titulo.pack(padx=20, pady=(30, 5))
@@ -64,6 +65,13 @@ class TelaResultados(ctk.CTk):
         )
         self.btn_atualizar.pack(padx=20, pady=15, fill="x")
 
+        self.btn_exportar = ctk.CTkButton(
+            self.menu_lateral, 
+            text="Exportar Dados", 
+            font=ctk.CTkFont(weight="bold"),
+            command=self._ao_clicar_exportar
+        )
+        self.btn_exportar.pack(padx=20, pady=15, fill="x")
         # Caixa de Texto para Informações ou Legenda
         self.txt_legenda = ctk.CTkTextbox(self.menu_lateral, height=180, activate_scrollbars=False)
         self.txt_legenda.pack(padx=20, pady=(20, 10), fill="x")
@@ -96,6 +104,43 @@ class TelaResultados(ctk.CTk):
         # Acessa os dados através da ViewModel injetada
         dados_atuais = self._view_model.obter_dados_tabela()
         self.exibir_dados(dados_atuais)
+
+    def _ao_clicar_exportar(self) -> None:
+        """Abre uma janela de botões para o usuário selecionar o formato de exportação."""
+        print("Botão Exportar acionado. Abrindo modal de seleção...")
+
+        # 1. Instancia a nossa janela de botões customizada
+        janela_formato = JanelaSelecaoFormato(self)
+        
+        # Faz o código da TelaResultados esperar até que esta janela seja fechada/destruída
+        self.wait_window(janela_formato)
+
+        # 2. Captura qual formato foi clicado pelo usuário
+        formato_escolhido = janela_formato.resultado
+
+        # Se o usuário fechou no "X" sem clicar em nenhum botão, interrompe o fluxo de forma segura
+        if not formato_escolhido:
+            print("Exportação cancelada pelo usuário.")
+            return
+
+        try:
+            # 3. Dispara a lógica de exportação na ViewModel
+            caminho_arquivo = self._view_model.processar_exportacao(
+                formato=formato_escolhido, 
+                filtros_linhas=None
+            )
+
+            # 4. Mostra a mensagem de sucesso limpa na tela
+            mensagem_sucesso = (
+                f"Dados exportados com sucesso!\n\n"
+                f"Salvo em:\n{caminho_arquivo}"
+            )
+            exibir_modal(self, mensagem_sucesso)
+            print(f"✅ Arquivo gerado com sucesso em: {caminho_arquivo}")
+
+        except Exception as e:
+            exibir_modal(self, f"Falha ao exportar os dados:\n{str(e)}")
+
 
     def exibir_dados(self, dados) -> None:
         """Processa os dados de forma agnóstica a objetos ou dicionários e monta o grafo."""
@@ -191,7 +236,7 @@ class TelaResultados(ctk.CTk):
 
             # 4. Desenho e plotagem no Matplotlib
             fig, ax = plt.subplots(figsize=(10, 6))
-            ax.set_title("Malha Logística de Transporte - SouBus-APO", fontsize=12, fontweight="bold")
+            ax.set_title("Malha Logística de Transporte", fontsize=12, fontweight="bold")
             ax.set_xlabel("Longitude")
             ax.set_ylabel("Latitude")
             ax.grid(True, linestyle="--", alpha=0.3)
