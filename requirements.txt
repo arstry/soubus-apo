@@ -1,5 +1,5 @@
 # Dependências do projeto SouBus-APO
-# O projeto utiliza primariamente a biblioteca padrão do Python 3.14+.
-# matplotlib==3.10.9
-# matplotlib==3.10.9
-# networkx==3.6.1
+
+customtkinter>=5.2.2
+matplotlib>=3.9.0
+networkx>=3.4.0

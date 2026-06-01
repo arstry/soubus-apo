@@ -24,7 +24,7 @@ def exibir_modal(janela_principal, mensagem):
     )
     btn_fechar.pack(pady=(0, 15))
 
-    modal.update()  # força a janela a ser exibida
+    modal.update()
 
     modal.grab_set()
     modal.focus_set()
