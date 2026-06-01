@@ -19,7 +19,7 @@ a Public Transport System. It is divided into two main areas:
 🛠️ Technologies & Architecture
 
   - Language: Python
-  - GUI Framework: Custontkinter
+  - GUI Framework: CustomTkinter
   - Data Storage: Local JSON and CSV files
   - Architecture Pattern: MVVM (Model-View-ViewModel)
   - Design Patterns: Dependency Injection
@@ -111,3 +111,38 @@ If you are not using `requirements.txt`:
 pip install customtkinter matplotlib networkx
 sudo apt install python3-tk
 ```
+
+## How to Run
+
+After installing the dependencies, start the system from the project root:
+
+```bash
+python main.py
+```
+
+You will see the following menu:
+
+```
+--- SOUBUS-APO (PAINEL OPERACIONAL) ---
+1. Abrir Tela de Cadastro
+2. Abrir Tela de Resultados
+3. Sair do Sistema
+```
+
+### Options
+
+| Option | Description |
+|---|---|
+| **1 — Cadastro** | Opens the data entry screen. If a graphical environment is available (`$DISPLAY` set), it launches the CustomTkinter form; otherwise it falls back to a text-based CLI. Here you can register bus stops (**Parada**), passenger demand points (**Demanda**), and bus lines (**LinhaOnibus**). |
+| **2 — Resultados** | Opens the results dashboard with a NetworkX graph visualization of the transport network. Data can be exported to CSV or JSON via the sidebar button. |
+| **3 — Sair** | Exits the system. |
+
+### Running Tests
+
+```bash
+python -m pytest src/tests/test_all.py -v
+```
+
+### Default Data
+
+The system ships with sample data in `src/static/dados_sistema.json` (4 demand points, 5 bus stops, 3 bus lines) so the results screen can be tested immediately after the first run.
