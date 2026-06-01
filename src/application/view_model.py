@@ -1,7 +1,7 @@
 import csv
 import json
 import os
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List
 
 from src.application.estados import EstadosTelaEntrada, EstadosTelaResultado
@@ -113,53 +113,6 @@ class ResultadoViewModel(ViewModel):
             self.uiState = EstadosTelaResultado.ERRO
             raise
     
-    def tratar_dados(self, dados_json: dict) -> dict:
-        """
-        Garante a integridade do dicionário de dados da malha logística.
-        Normaliza campos nulos, tipos de dados e chaves obrigatórias.
-        """
-        if not dados_json:
-            return {"demandas": [], "paradas": [], "linhas_onibus": []}
-
-        dados_tratados = {
-            # Garante que 'demandas' sempre será uma lista de dicionários válidos
-            "demandas": [
-                {
-                    "latitude": float(d["latitude"]),
-                    "longitude": float(d["longitude"]),
-                    "demanda": int(d["demanda"]),
-                    "nome": str(d.get("nome", "Demanda Sem Nome")).upper()
-                }
-                for d in dados_json.get("demandas", [])
-                if "latitude" in d and "longitude" in d
-            ],
-            
-            # Garante que 'paradas' mantém os IDs numéricos e o estado booleano correto
-            "paradas": [
-                {
-                    "latitude": float(p["latitude"]),
-                    "longitude": float(p["longitude"]),
-                    "id": int(p["id"]),
-                    "linhas_onibus": [str(l) for l in p.get("linhas_onibus", [])],
-                    "estado": bool(p.get("estado", True))
-                }
-                for p in dados_json.get("paradas", [])
-                if "latitude" in p and "longitude" in p and "id" in p
-            ],
-            
-            # Mapeia as rotas para o NetworkX saber quais paradas conectar por linhas retas
-            "linhas_onibus": [
-                {
-                    "nome": str(l["nome"]),
-                    "capacidade": int(l.get("capacidade", 0)),
-                    "paradas_ids": [int(pid) for pid in l.get("paradas_ids", [])]
-                }
-                for l in dados_json.get("linhas_onibus", [])
-                if "nome" in l and "paradas_ids" in l
-            ]
-        }
-        
-        return dados_tratados
     def obter_linhas_onibus(self) -> List[LinhaOnibus]:
         """Retorna todas as linhas de ônibus cadastradas no sistema.
         

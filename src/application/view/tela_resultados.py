@@ -100,15 +100,11 @@ class TelaResultados(ctk.CTk):
 
     def _ao_clicar_atualizar(self) -> None:
         """Busca os dados mais recentes da ViewModel e atualiza o display."""
-        print("Botão Atualizar pressionado. Buscando dados da ViewModel...")
-        # Acessa os dados através da ViewModel injetada
         dados_atuais = self._view_model.obter_dados_tabela()
         self.exibir_dados(dados_atuais)
 
     def _ao_clicar_exportar(self) -> None:
         """Abre uma janela de botões para o usuário selecionar o formato de exportação."""
-        print("Botão Exportar acionado. Abrindo modal de seleção...")
-
         # 1. Instancia a nossa janela de botões customizada
         janela_formato = JanelaSelecaoFormato(self)
         
@@ -120,7 +116,6 @@ class TelaResultados(ctk.CTk):
 
         # Se o usuário fechou no "X" sem clicar em nenhum botão, interrompe o fluxo de forma segura
         if not formato_escolhido:
-            print("Exportação cancelada pelo usuário.")
             return
 
         try:
@@ -136,7 +131,6 @@ class TelaResultados(ctk.CTk):
                 f"Salvo em:\n{caminho_arquivo}"
             )
             exibir_modal(self, mensagem_sucesso)
-            print(f"✅ Arquivo gerado com sucesso em: {caminho_arquivo}")
 
         except Exception as e:
             exibir_modal(self, f"Falha ao exportar os dados:\n{str(e)}")
@@ -169,20 +163,18 @@ class TelaResultados(ctk.CTk):
             labels = {}
             paradas_ids_detectados = []
 
-            # Iteração robusta sobre a lista de objetos cadastrados
-            for elemento in lista_elementos:
-                # Função auxiliar para extrair atributos lidando com variações (ex: lat, _latitude, etc.)
-                def extrair(obj, chaves_possiveis, padrao=None):
-                    if isinstance(obj, dict):
-                        for c in chaves_possiveis:
-                            if c in obj: return obj[c]
-                    else:
-                        for c in chaves_possiveis:
-                            if hasattr(obj, c): return getattr(obj, c)
-                            if hasattr(obj, f"_{c}"): return getattr(obj, f"_{c}")
-                    return padrao
+            def extrair(obj, chaves_possiveis, padrao=None):
+                if isinstance(obj, dict):
+                    for c in chaves_possiveis:
+                        if c in obj: return obj[c]
+                else:
+                    for c in chaves_possiveis:
+                        if hasattr(obj, c): return getattr(obj, c)
+                        if hasattr(obj, f"_{c}"): return getattr(obj, f"_{c}")
+                return padrao
 
-                # Identifica as coordenadas geográficas
+            for elemento in lista_elementos:
+                lat = extrair(elemento, ["latitude", "lat", "y"])
                 lat = extrair(elemento, ["latitude", "lat", "y"])
                 lon = extrair(elemento, ["longitude", "long", "lon", "x"])
 
@@ -277,8 +269,4 @@ class TelaResultados(ctk.CTk):
             paradas_ids_detectados.append(pid)
             
     def _ao_fechar_janela(self) -> None:
-        """ Garante que o programa inteiro fecha quando o usuário clica no 'X'. """
-        import sys
-        print("\n👋 Janela de resultados fechada pelo usuário. Encerrando aplicação...")
-        self.destroy()  # Destrói a interface de forma limpa
-        sys.exit(0)     # Mata o processo do terminal imediatamente
+        self.destroy()
