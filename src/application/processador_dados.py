@@ -10,7 +10,7 @@ from src.util.excecoes import ExcecaoValidacaoSeguranca
 
 
 class ProcessadorDados:
-    PRECISAO_COORDENADAS: int = 6
+    PRECISAO_COORDENADAS: int = 9
     TAMANHO_MAXIMO_TEXTO: int = 200
     PADRAO_INJECAO: re.Pattern = re.compile(r"[;&|`$(){}\[\]<>!\\'\"]")
 

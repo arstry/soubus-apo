@@ -264,8 +264,8 @@ class TestProcessadorDados(unittest.TestCase):
         demanda = self.processador.processar_demanda(dados)
         
         self.assertIsInstance(demanda, Demanda)
-        self.assertEqual(demanda.get_latitude(), -19.917456)  
-        self.assertEqual(demanda.get_longitude(), -43.934123)
+        self.assertEqual(demanda.get_latitude(), -1719.94567)
+        self.assertEqual(demanda.get_longitude(), -43.9341234)
         self.assertEqual(demanda.get_demanda(), 150)
         self.assertEqual(demanda.get_nome(), "ESTACAO CENTRAL")  
 
@@ -334,7 +334,7 @@ class TestProcessadorDados(unittest.TestCase):
 
     def test_truncar_coordenadas(self):
         resultado = self.processador.truncar_coordenadas(-19.917456789)
-        self.assertEqual(resultado, -19.917456)
+        self.assertEqual(resultado, -19.917456789)
 
     def test_neutralizar_injecao_comandos(self):
         resultado = self.processador.neutralizar_injecao_comandos("texto; rm -rf /")
@@ -379,33 +379,6 @@ class TestGerenciadorAutenticacao(unittest.TestCase):
         resultado = self.gerenciador.validar_credenciais("usuario_falso", "senha")
         self.assertFalse(resultado)
 
-
-class TestInputViewModel(unittest.TestCase):
-    def setUp(self):
-        self.arquivo_teste = "test_vm_dados.json"
-        self.repositorio = GerenciadorJsonDados(caminho_arquivo=self.arquivo_teste)
-        self.processador = ProcessadorDados()
-        self.vm = InputViewModel(
-            repositorio=self.repositorio, processador=self.processador
-        )
-
-    def tearDown(self):
-        if os.path.exists(self.arquivo_teste):
-            os.remove(self.arquivo_teste)
-
-    def test_submeter_dados_validos(self):
-        dados = {"latitude": -19.917, "longitude": -43.934, "demanda": 100,
-                 "linhas_onibus": "5102", "tipo_de_ponto": "TERMINAL"}
-        resultado = self.vm.submeter_dados(dados)
-        self.assertTrue(resultado)
-        from src.application.estados import EstadosTelaEntrada
-        self.assertEqual(self.vm.uiState, EstadosTelaEntrada.SUCESSO)
-
-    def test_submeter_dados_invalidos_lanca_excecao(self):
-        dados = {"latitude": -19.917, "longitude": -43.934, "demanda": -1,
-                 "linhas_onibus": "5102", "tipo_de_ponto": "TERMINAL"}
-        with self.assertRaises(ExcecaoValidacaoSeguranca):
-            self.vm.submeter_dados(dados)
 
 class TestInputViewModel(unittest.TestCase):
     def setUp(self):

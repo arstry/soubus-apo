@@ -1,7 +1,7 @@
 import csv
 import json
 import os
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List
 
 from src.application.estados import EstadosTelaEntrada, EstadosTelaResultado
