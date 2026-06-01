@@ -264,7 +264,7 @@ class TestProcessadorDados(unittest.TestCase):
         demanda = self.processador.processar_demanda(dados)
         
         self.assertIsInstance(demanda, Demanda)
-        self.assertEqual(demanda.get_latitude(), -1719.94567)
+        self.assertEqual(demanda.get_latitude(), -19.9174567)  
         self.assertEqual(demanda.get_longitude(), -43.9341234)
         self.assertEqual(demanda.get_demanda(), 150)
         self.assertEqual(demanda.get_nome(), "ESTACAO CENTRAL")  

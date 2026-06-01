@@ -126,7 +126,7 @@ class ResultadoViewModel(ViewModel):
         except Exception:
             self.uiState = EstadosTelaResultado.ERRO
             raise
-        
+
     def processar_exportacao(
         self, formato: str, filtros_linhas: List[str] | None = None
     ) -> str:
@@ -211,3 +211,4 @@ class ResultadoViewModel(ViewModel):
                 indent=2,
             )
         return os.path.abspath(caminho)
+    

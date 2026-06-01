@@ -2,6 +2,7 @@ from src.application.processador_dados import ProcessadorDados
 from src.application.view_model import InputViewModel, ResultadoViewModel
 from src.data.gerenciador_autenticacao import GerenciadorAutenticacao
 from src.data.gerenciador_json_dados import GerenciadorJsonDados
+from src.application.view.tela_resultados import TelaResultados
 from src.application.view.tela_entrada import TelaEntrada
 
 
@@ -12,6 +13,7 @@ class MainIntegrador:
         self._processador: ProcessadorDados | None = None
         self._input_view_model: InputViewModel | None = None
         self._resultado_view_model: ResultadoViewModel | None = None
+        self._tela_resultados: TelaResultados | None = None
         self._tela_entrada: TelaEntrada | None = None
 
     def iniciar_aplicacao(self) -> None:
@@ -44,6 +46,22 @@ class MainIntegrador:
             )
         return self._resultado_view_model
 
+    @property
+    def tela_resultados(self) -> TelaResultados:
+        """Retorna a instância da interface gráfica, criando-a sob demanda."""
+        # Se a tela ainda não foi criada, fazemos isso agora!
+        if self._tela_resultados is None:
+            # Mas antes, garante que a ViewModel necessária já foi gerada
+            if self._resultado_view_model is None:
+                raise RuntimeError(
+                    "MainIntegrador não foi inicializado. Chame iniciar_aplicacao() primeiro."
+                )
+            
+            # Cria a janela de forma segura apenas quando requisitada
+            self._tela_resultados = TelaResultados(view_model=self._resultado_view_model)
+            
+        return self._tela_resultados
+    
     @property
     def tela_entrada(self) -> TelaEntrada:
         if self._tela_entrada is None:
